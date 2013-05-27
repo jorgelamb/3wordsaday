@@ -26,6 +26,10 @@ public class WordResultDTO implements Serializable {
 		this.date = date;
 	}
 	
+	public WordResultDTO(WordDTO word) {
+		this(word.getFrom(), word.getTo(), word.getWord(), word.getTries(), word.isCorrect(), "");
+	}
+	
 	public String getWord() {
 		return word;
 	}

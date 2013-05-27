@@ -31,15 +31,16 @@ public class WordServiceImpl extends RemoteServiceServlet implements WordService
 				throw new TooManyAnswersException();
 			}
 			
-			Query query = pm.newQuery(Word.class);
-			List<Word> results = (List<Word>)query.execute();
+			Query query = pm.newQuery(Word.class, "from == :from && to == :to");
+			List<Word> results = (List<Word>)query.execute(from, to);
 			if(results.isEmpty()) {
-				String[] translations1 = {"prueba", "test"};
-				Word word1 = new Word("es", "en", "test", new HashSet<String>(Arrays.asList(translations1)));
-				pm.makePersistent(word1);
-				String[] translations2 = {"hola", "buenos días"};
-				Word word2 = new Word("es", "en", "hello", new HashSet<String>(Arrays.asList(translations2)));
-				pm.makePersistent(word2);
+				addWord(pm, from, to, "es", "en", "hola", "hi", "hello");
+				addWord(pm, from, to, "es", "en", "adios", "bye", "good bye");
+				addWord(pm, from, to, "es", "en", "prueba", "test");
+				
+				addWord(pm, from, to, "en", "es", "test", "prueba", "test");
+				addWord(pm, from, to, "en", "es", "hello", "hola", "buenos días");
+				addWord(pm, from, to, "en", "es", "bye", "adios");
 				return get(userId, from, to);
 			}
 			
@@ -47,6 +48,13 @@ public class WordServiceImpl extends RemoteServiceServlet implements WordService
 			return new WordDTO(word.getFrom(), word.getTo(), word.getWord(), word.getTranslations());
 		} finally {
 			pm.close();
+		}
+	}
+	
+	private void addWord(PersistenceManager pm, String queryFrom, String queryTo, String from, String to, String word, String... translations) {
+		if(from.equals(queryFrom) && to.equals(queryTo)) {
+			Word wordObject = new Word(from, to, word, new HashSet<String>(Arrays.asList(translations)));
+			pm.makePersistent(wordObject);
 		}
 	}
 	

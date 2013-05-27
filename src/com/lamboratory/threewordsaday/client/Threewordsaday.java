@@ -1,6 +1,9 @@
 package com.lamboratory.threewordsaday.client;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
@@ -19,7 +22,7 @@ import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.TabPanel;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
-import com.lamboratory.threewordsaday.server.db.WordResult;
+import com.lamboratory.threewordsaday.shared.TranslationDTO;
 import com.lamboratory.threewordsaday.shared.WordDTO;
 import com.lamboratory.threewordsaday.shared.WordResultDTO;
 
@@ -35,89 +38,114 @@ public class Threewordsaday implements EntryPoint {
 
 		final TabPanel tabs = new TabPanel();
 
-		addWordsPanel(tabs);
+		List<TranslationDTO> translations = new ArrayList<TranslationDTO>();
+		translations.add(new TranslationDTO("en", "es"));
+		translations.add(new TranslationDTO("es", "en"));
+
+		for(TranslationDTO translation : translations) {
+			addWordsPanel(translation, tabs);
+		}
 
 		tabs.selectTab(0);
 
 		RootPanel.get().add(tabs);
 	}
 
-	final Label wordLabel = new Label();
-	final TextBox textBox = new TextBox();
-	final Panel previousWords = new VerticalPanel();
+	final Map<TranslationDTO, Label> wordLabels = new HashMap<TranslationDTO, Label>();
+	final Map<TranslationDTO, TextBox> textBoxes = new HashMap<TranslationDTO, TextBox>();
+	final Map<TranslationDTO, VerticalPanel> previousWordsPanels = new HashMap<TranslationDTO, VerticalPanel>();
+	final Map<TranslationDTO, WordDTO> currentWords = new HashMap<TranslationDTO, WordDTO>();
 
-	private void addWordsPanel(final TabPanel tabs) {
+	private void addWordsPanel(TranslationDTO translation, final TabPanel tabs) {
 		Panel wordsList = new VerticalPanel();
 
 		Panel currentWordPanel = new FlowPanel();
 		wordsList.add(currentWordPanel);
 
+		Label wordLabel = new Label();
 		wordLabel.setText("Loading...");
 		currentWordPanel.add(wordLabel);
+		wordLabels.put(translation, wordLabel);
 
+		TextBox textBox = new TextBox();
 		textBox.setText("");
 		currentWordPanel.add(textBox);
+		textBoxes.put(translation, textBox);
 
 		Button check = new Button();
 		currentWordPanel.add(check);
 
-		CheckWordHandler handler = new CheckWordHandler();
+		CheckWordHandler handler = new CheckWordHandler(translation);
 		check.addClickHandler(handler);
 		textBox.addKeyUpHandler(handler);
 
-		getWord();
+		getWord(translation);
 
-		getPreviousWords();
+		VerticalPanel previousWords = new VerticalPanel();
+		previousWordsPanels.put(translation, previousWords);
+		getPreviousWords(translation);
 		wordsList.add(previousWords);
 
-		tabs.add(wordsList, "Words");
+		tabs.add(wordsList, translation.getFrom() + " -> " + translation.getTo());
 	}
 
-	private WordDTO currentWord = null;
-
-	private void getWord() {
-		wordLabel.setText("Loading...");
-		textBox.setText("");
-		wordService.get(USER_ID, "es", "en", new AsyncCallback<WordDTO>() {
+	private void getWord(final TranslationDTO translation) {
+		wordLabels.get(translation).setText("Loading...");
+		textBoxes.get(translation).setText("");
+		wordService.get(USER_ID, translation.getFrom(), translation.getTo(), new AsyncCallback<WordDTO>() {
 			public void onFailure(Throwable caught) {
-				Window.alert("no more available questions");
+				wordLabels.get(translation).setText("No more words for today");
 			}
 
 			public void onSuccess(WordDTO word) {
-				currentWord = word;
-				wordLabel.setText(word.getWord());
+				currentWords.put(translation, word);
+				wordLabels.get(translation).setText(word.getWord());
 			}
 		});
 	}
 
-	private void getPreviousWords() {
-		wordService.getPreviousWords(USER_ID, "es", "en", new AsyncCallback<List<WordResultDTO>>() {
-			public void onFailure(Throwable caught) {
-			}
+	private void getPreviousWords(TranslationDTO translation) {
+		wordService.getPreviousWords(USER_ID, translation.getFrom(), translation.getTo(),
+				new AsyncCallback<List<WordResultDTO>>() {
+					public void onFailure(Throwable caught) {
+					}
 
-			@Override
-			public void onSuccess(List<WordResultDTO> words) {
-				for(WordResultDTO wordResult : words) {
-					previousWords.add(new Label(wordResult.getWord()+" "+wordResult.isCorrect()));
-				}
-			}
-		});
+					@Override
+					public void onSuccess(List<WordResultDTO> words) {
+						for (WordResultDTO wordResult : words) {
+							addPreviousWord(wordResult);
+						}
+					}
+				});
 	}
 
-	private void sendResult() {
-		wordService.sendResult(USER_ID, currentWord, new AsyncCallback<Boolean>() {
-			public void onFailure(Throwable caught) {
-			}
+	private void addPreviousWord(WordResultDTO wordResult) {
+		previousWordsPanels.get(new TranslationDTO(wordResult.getFrom(), wordResult.getTo())).add(new Label(wordResult.getWord() + " "
+				+ wordResult.isCorrect()));
+	}
 
-			@Override
-			public void onSuccess(Boolean result) {
-				getWord();
-			}
-		});
+	private void sendResult(final TranslationDTO translation) {
+		wordService.sendResult(USER_ID, currentWords.get(translation),
+				new AsyncCallback<Boolean>() {
+					public void onFailure(Throwable caught) {
+					}
+
+					@Override
+					public void onSuccess(Boolean result) {
+						WordResultDTO wordResult = new WordResultDTO(currentWords.get(translation));
+						addPreviousWord(wordResult);
+						getWord(translation);
+					}
+				});
 	}
 
 	class CheckWordHandler implements ClickHandler, KeyUpHandler {
 
+		TranslationDTO translation;
+		public CheckWordHandler(TranslationDTO translation) {
+			this.translation = translation;
+		}
+		
 		@Override
 		public void onKeyUp(KeyUpEvent event) {
 			if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
@@ -131,18 +159,19 @@ public class Threewordsaday implements EntryPoint {
 		}
 
 		private void checkWord() {
+			WordDTO currentWord = currentWords.get(translation);
 			if (currentWord != null) {
-				String translation = textBox.getText();
-				int tries = currentWord.getTries()+1;
+				String translationText = textBoxes.get(translation).getText();
+				int tries = currentWord.getTries() + 1;
 				currentWord.setTries(tries);
-				if (currentWord.isCorrect(translation)) {
+				if (currentWord.isCorrect(translationText)) {
 					Window.alert("correct!");
 					currentWord.setCorrect(true);
-					sendResult();
+					sendResult(translation);
 				} else {
 					Window.alert("wrong!");
-					if(tries>=MAX_TRIES) {
-						sendResult();
+					if (tries >= MAX_TRIES) {
+						sendResult(translation);
 					}
 				}
 			}
