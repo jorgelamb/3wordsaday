@@ -16,5 +16,6 @@ war/WEB-INF/deploy/
 war/WEB-INF/classes/
 
 # gwt for 3 words a day
-war/threewordsaday/*.gwt.rpc
-war/threewordsaday/*.cache.html
+war/*/*.gwt.rpc
+war/*/*.cache.html
+war/*/*.nocache.js
