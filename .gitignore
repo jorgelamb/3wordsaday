@@ -14,3 +14,7 @@ gwt-unitCache/
 # more caches and things from deploy #
 war/WEB-INF/deploy/
 war/WEB-INF/classes/
+
+# gwt for 3 words a day
+war/threewordsaday/*.gwt.rpc
+war/threewordsaday/*.cache.html
