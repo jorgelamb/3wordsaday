@@ -13,6 +13,8 @@ import com.google.appengine.api.datastore.Key;
 @PersistenceCapable
 public class Word implements Serializable {
 	
+	private static final long serialVersionUID = -5235001130052996621L;
+
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
 	private Key key;

@@ -12,6 +12,8 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
+import com.google.gwt.storage.client.Storage;
+import com.google.gwt.user.client.Random;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.Button;
@@ -28,13 +30,16 @@ import com.lamboratory.threewordsaday.shared.WordResultDTO;
 
 public class Threewordsaday implements EntryPoint {
 
-	private static final String USER_ID = "USER_ID";
+	private static final String USER_ID_KEY = "USER_ID";
+	private String userId = "";
 
 	public static final int MAX_TRIES = 3;
-
+	
 	private final WordServiceAsync wordService = GWT.create(WordService.class);
 
 	public void onModuleLoad() {
+
+		getUserId();
 
 		final TabPanel tabs = new TabPanel();
 
@@ -49,6 +54,18 @@ public class Threewordsaday implements EntryPoint {
 		tabs.selectTab(0);
 
 		RootPanel.get().add(tabs);
+	}
+
+	private void getUserId() {
+		if(Storage.isLocalStorageSupported()) {
+			Storage localStorage = Storage.getLocalStorageIfSupported();
+			String userId = localStorage.getItem(USER_ID_KEY);
+			if(userId == null || userId.isEmpty()) {
+				userId = ""+Random.nextInt();
+				localStorage.setItem(USER_ID_KEY, userId);
+			}
+			this.userId = userId;
+		}
 	}
 
 	final Map<TranslationDTO, Label> wordLabels = new HashMap<TranslationDTO, Label>();
@@ -92,7 +109,7 @@ public class Threewordsaday implements EntryPoint {
 	private void getWord(final TranslationDTO translation) {
 		wordLabels.get(translation).setText("Loading...");
 		textBoxes.get(translation).setText("");
-		wordService.get(USER_ID, translation.getFrom(), translation.getTo(), new AsyncCallback<WordDTO>() {
+		wordService.get(userId, translation.getFrom(), translation.getTo(), new AsyncCallback<WordDTO>() {
 			public void onFailure(Throwable caught) {
 				wordLabels.get(translation).setText("No more words for today");
 			}
@@ -105,7 +122,7 @@ public class Threewordsaday implements EntryPoint {
 	}
 
 	private void getPreviousWords(TranslationDTO translation) {
-		wordService.getPreviousWords(USER_ID, translation.getFrom(), translation.getTo(),
+		wordService.getPreviousWords(userId, translation.getFrom(), translation.getTo(),
 				new AsyncCallback<List<WordResultDTO>>() {
 					public void onFailure(Throwable caught) {
 					}
@@ -125,7 +142,7 @@ public class Threewordsaday implements EntryPoint {
 	}
 
 	private void sendResult(final TranslationDTO translation) {
-		wordService.sendResult(USER_ID, currentWords.get(translation),
+		wordService.sendResult(userId, currentWords.get(translation),
 				new AsyncCallback<Boolean>() {
 					public void onFailure(Throwable caught) {
 					}
