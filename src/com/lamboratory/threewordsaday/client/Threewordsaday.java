@@ -12,12 +12,14 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
+import com.google.gwt.http.client.URL;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Random;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.FlowPanel;
+import com.google.gwt.user.client.ui.HTMLPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.Panel;
 import com.google.gwt.user.client.ui.RootPanel;
@@ -30,6 +32,10 @@ import com.lamboratory.threewordsaday.shared.WordResultDTO;
 
 public class Threewordsaday implements EntryPoint {
 
+	private static final String SHARE_URL = "http://www.example.com/";
+	private static final String SHARE_NAME = "Three Words A Day";
+	private static final String SHARE_TEXT = "Three Words A Day - Learn three new words every day";
+	
 	private static final String USER_ID_KEY = "USER_ID";
 	private String userId = "";
 
@@ -50,10 +56,25 @@ public class Threewordsaday implements EntryPoint {
 		for(TranslationDTO translation : translations) {
 			addWordsPanel(translation, tabs);
 		}
+		
+		addShareTab(tabs);
 
 		tabs.selectTab(0);
 
 		RootPanel.get().add(tabs);
+	}
+
+	private void addShareTab(TabPanel tabs) {
+		Panel sharePanel = new FlowPanel();
+		
+		sharePanel.add(new HTMLPanel("<a href=\"https://twitter.com/share?url="+SHARE_URL+"&text="+URL.encode(SHARE_TEXT)+"\" class=\"twitter-share-button\" data-lang=\"en\">Tweet</a>"
+				+ "<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=\"https://platform.twitter.com/widgets.js\";fjs.parentNode.insertBefore(js,fjs);}}(document,\"script\",\"twitter-wjs\");</script>"));
+		
+		sharePanel.add(new HTMLPanel("<a href=\"http://www.facebook.com/sharer.php?u="+SHARE_URL+"&t="+URL.encode(SHARE_TEXT)+"\">Share on Facebook</a>"));
+		
+		sharePanel.add(new HTMLPanel("<a href=\"https://plus.google.com/share?url="+SHARE_URL+"\">Share on G+</a>"));
+		
+		tabs.add(sharePanel, "Share");
 	}
 
 	private void getUserId() {
